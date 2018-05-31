@@ -1,23 +1,17 @@
-# Hoooo boy, okay, this dockerfile should setup everything for an erlecopter
-# simulation environment.
-# It containerizes an entire ubuntu 14.04 installation + ROS dependencies, all
-# that is needed is to compile the catkin ws like so (there might be issues):
+FROM ros:indigo
 
-# catkin_make --pkg mav_msgs mavros_msgs gazebo_msgs
-# source devel/setup.bash
-# catkin_make -j 4
+# Arguments
+ARG user
+ARG uid
+ARG home
+ARG workspace
+ARG shell
 
-# user: indigo
-# password: password
+# Basic Utilities
+RUN apt-get -y update && apt-get install -y zsh screen tree sudo ssh synaptic wget tar nano gedit 
 
-FROM osrf/ros:indigo-desktop-trusty
-
-RUN useradd -ms /bin/bash indigo -p M6bzwuMFu29ok
-RUN usermod -aG sudo indigo
-
-RUN apt-get update
-RUN apt-get install -y ros-indigo-desktop-full=1.1.6-0*
-RUN apt-get install gawk make git curl cmake autoconf wget tar nano -y
+# Erle dependencies
+RUN apt-get install gawk make git curl cmake autoconf -y
 RUN apt-get install g++ python-pip python-matplotlib \
                     python-serial python-wxgtk2.8 python-scipy \
                     python-opencv python-numpy python-pyparsing \
@@ -27,14 +21,6 @@ RUN pip install     future
 RUN apt-get install libxml2-dev libxslt1-dev -y
 RUN pip2 install    pymavlink catkin_pkg --upgrade
 RUN pip install     MAVProxy==1.5.2
-
-RUN cd /tmp && wget --content-disposition "https://downloads.sourceforge.net/project/aruco/OldVersions/aruco-1.3.0.tgz?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Faruco%2Ffiles%2FOldVersions%2Faruco-1.3.0.tgz%2Fdownload&ts=1527786171"
-RUN tar -xvzf aruco-1.3.0.tgz
-RUN cd aruco-1.3.0/
-RUN mkdir build && cd build
-RUN cmake ..
-RUN make
-RUN make install
 
 RUN apt-get install python-rosinstall          \
                     ros-indigo-octomap-msgs    \
@@ -47,42 +33,60 @@ RUN apt-get install python-rosinstall          \
                     ros-indigo-joint-limits-interface \
                     unzip -y
 
+RUN cd /tmp && wget --content-disposition "https://downloads.sourceforge.net/project/aruco/OldVersions/aruco-1.3.0.tgz?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Faruco%2Ffiles%2FOldVersions%2Faruco-1.3.0.tgz%2Fdownload&ts=1527786171" && tar -xvzf aruco-1.3.0.tgz && cd aruco-1.3.0/ && mkdir build && cd build && cmake .. && make && make install
 
+
+# Latest X11 / mesa GL
+RUN apt-get install -y\
+  xserver-xorg-dev-lts-wily\
+  libegl1-mesa-dev-lts-wily\
+  libgl1-mesa-dev-lts-wily\
+  libgbm-dev-lts-wily\
+  mesa-common-dev-lts-wily\
+  libgles2-mesa-lts-wily\
+  libwayland-egl1-mesa-lts-wily\
+  libopenvg1-mesa
+
+# Dependencies required to build rviz
+RUN apt-get install -y\
+  qt4-dev-tools\
+  libqt5core5a libqt5dbus5 libqt5gui5 libwayland-client0\
+  libwayland-server0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1\
+  libxcb-render-util0 libxcb-util0 libxcb-xkb1 libxkbcommon-x11-0\
+  libxkbcommon0
+
+# The rest of ROS-desktop
+RUN apt-get install -y ros-indigo-desktop-full
+
+# Get Gazebo 7
 RUN sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
-RUN wget "http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -"
+RUN wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
 RUN apt-get update
-RUN apt-get remove .*gazebo.* '.*sdformat.*' '.*ignition-math.*' && apt-get update && sudo apt-get install gazebo7 libgazebo7-dev drcsim7 -y
+RUN apt-get remove .*gazebo.* '.*sdformat.*' '.*ignition-math.*' -y && apt-get update && apt-get install gazebo7 libgazebo7-dev drcsim7 -y
 
-USER indigo
-WORKDIR /home/indigo
+# Additional development tools
+RUN apt-get install -y x11-apps python-pip build-essential
+RUN pip install catkin_tools
 
-RUN echo "source /opt/ros/indigo/setup.bash" >> ~/.bashrc
-RUN source ~/.bashrc
+# Make SSH available
+EXPOSE 22
 
-RUN mkdir -p ~/simulation && cd ~/simulation
-RUN git clone https://github.com/erlerobot/ardupilot -b gazebo
+# Mount the user's home directory
+VOLUME "${home}"
 
-RUN mkdir -p ~/simulation/ros_catkin_ws/src && cd ~/simulation/ros_catkin_ws/src
-RUN catkin_init_workspace
-RUN cd ~/simulation/ros_catkin_ws
-RUN catkin_make
-RUN echo "source devel/setup.bash" > ~/.bashrc
-RUN source ~/.bashrc
+# Clone user into docker image and set up X11 sharing
+RUN \
+  echo "${user}:x:${uid}:${uid}:${user},,,:${home}:${shell}" >> /etc/passwd && \
+  echo "${user}:x:${uid}:" >> /etc/group && \
+  echo "${user} ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/${user}" && \
+  chmod 0440 "/etc/sudoers.d/${user}"
 
-RUN cd ~/simulation/ros_catkin_ws/src
-RUN git clone https://github.com/erlerobot/ardupilot_sitl_gazebo_plugin
-RUN git clone https://github.com/tu-darmstadt-ros-pkg/hector_gazebo/
-RUN git clone https://github.com/erlerobot/rotors_simulator -b sonar_plugin
-RUN git clone https://github.com/PX4/mav_comm.git
-RUN git clone https://github.com/ethz-asl/glog_catkin.git
-RUN cp glog_catkin/fix-unused-typedef-warning.patch .
-RUN git clone https://github.com/catkin/catkin_simple.git
-RUN git clone https://github.com/erlerobot/mavros.git
-RUN git clone https://github.com/ros-simulation/gazebo_ros_pkgs.git -b indigo-devel
-RUN git clone https://github.com/erlerobot/gazebo_cpp_examples
-RUN git clone https://github.com/erlerobot/gazebo_python_examples
+# Switch to user
+USER "${user}"
 
-RUN mkdir -p ~/.gazebo/models
-RUN git clone https://github.com/erlerobot/erle_gazebo_models
-RUN mv erle_gazebo_models/* ~/.gazebo/models
-RUN rm -r erle_gazebo_models
+# This is required for sharing Xauthority
+ENV QT_X11_NO_MITSHM=1
+ENV CATKIN_TOPLEVEL_WS="${workspace}/devel"
+
+# Switch to the workspace
+WORKDIR ${workspace}
