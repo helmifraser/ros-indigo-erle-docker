@@ -7,8 +7,11 @@ ARG home
 ARG workspace
 ARG shell
 
+RUN useradd -ms /bin/bash "${user}" -p M6bzwuMFu29ok
+RUN usermod -aG sudo "${user}"
+
 # Basic Utilities
-RUN apt-get -y update && apt-get install -y zsh screen tree sudo ssh synaptic wget tar nano gedit 
+RUN apt-get -y update && apt-get install -y zsh screen tree sudo ssh synaptic wget tar nano gedit
 
 # Erle dependencies
 RUN apt-get install gawk make git curl cmake autoconf -y
@@ -72,7 +75,7 @@ RUN pip install catkin_tools
 EXPOSE 22
 
 # Mount the user's home directory
-VOLUME "${home}"
+VOLUME "${workspace}"
 
 # Clone user into docker image and set up X11 sharing
 RUN \
@@ -89,4 +92,4 @@ ENV QT_X11_NO_MITSHM=1
 ENV CATKIN_TOPLEVEL_WS="${workspace}/devel"
 
 # Switch to the workspace
-WORKDIR ${workspace}
+WORKDIR /home/${user}

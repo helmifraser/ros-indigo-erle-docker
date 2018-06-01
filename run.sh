@@ -19,6 +19,8 @@ docker run\
   -e SHELL\
   -e DISPLAY\
   -e DOCKER=1\
-  -v "$HOME:$HOME:rw"\
+  -v "$SCRIPTPATH:$SCRIPTPATH:rw"\
   -v "/tmp/.X11-unix:/tmp/.X11-unix:rw"\
   -it $1 $SHELL
+
+  # -v "$HOME:$HOME:rw"\

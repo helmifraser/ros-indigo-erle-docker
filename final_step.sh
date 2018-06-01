@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+###############################################################################
+# Only run me once and *WITHIN* the container!                                #
+# Run the container via "docker run -it <name>"                               #
+# Then execute this                                                           #
+###############################################################################
+
 mkdir -p ~/simulation && cd ~/simulation && git clone https://github.com/erlerobot/ardupilot -b gazebo
 
 mkdir -p ~/simulation/ros_catkin_ws/src && cd ~/simulation/ros_catkin_ws/src
