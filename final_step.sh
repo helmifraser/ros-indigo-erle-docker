@@ -12,6 +12,10 @@ mkdir -p ~/simulation/ros_catkin_ws/src && cd ~/simulation/ros_catkin_ws/src
 . /opt/ros/indigo/setup.bash; catkin_init_workspace ~/simulation/ros_catkin_ws/src
 cd ~/simulation/ros_catkin_ws
 . /opt/ros/indigo/setup.bash; cd ~/simulation/ros_catkin_ws; catkin_make
+
+echo " " >> ~/.bashrc
+echo "alias sourcebash='source ~/.bashrc'" >> ~/.bashrc
+echo "source /opt/ros/indigo/setup.bash" >> ~/.bashrc
 echo "source ~/simulation/ros_catkin_ws/devel/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 

@@ -11,7 +11,7 @@ RUN useradd -ms /bin/bash "${user}" -p M6bzwuMFu29ok
 RUN usermod -aG sudo "${user}"
 
 # Basic Utilities
-RUN apt-get -y update && apt-get install -y zsh screen tree sudo ssh synaptic wget tar nano gedit
+RUN apt-get -y update && apt-get install -y zsh screen tree sudo ssh synaptic wget tar nano gedit tmux
 
 # Erle dependencies
 RUN apt-get install gawk make git curl cmake autoconf -y
@@ -78,18 +78,19 @@ EXPOSE 22
 VOLUME "${workspace}"
 
 # Clone user into docker image and set up X11 sharing
-RUN \
-  echo "${user}:x:${uid}:${uid}:${user},,,:${home}:${shell}" >> /etc/passwd && \
-  echo "${user}:x:${uid}:" >> /etc/group && \
-  echo "${user} ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/${user}" && \
-  chmod 0440 "/etc/sudoers.d/${user}"
+# RUN \
+#   echo "${user}:x:${uid}:${uid}:${user},,,:${home}:${shell}" >> /etc/passwd && \
+#   echo "${user}:x:${uid}:" >> /etc/group && \
+#   echo "${user} ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/${user}" && \
+#   chmod 0440 "/etc/sudoers.d/${user}"
 
 # Switch to user
 USER "${user}"
 
 # This is required for sharing Xauthority
 ENV QT_X11_NO_MITSHM=1
-ENV CATKIN_TOPLEVEL_WS="${workspace}/devel"
+# ENV CATKIN_TOPLEVEL_WS="${workspace}/devel"
+ENV CATKIN_TOPLEVEL_WS="/home/${user}/devel"
 
 # Switch to the workspace
 WORKDIR /home/${user}
